@@ -1,15 +1,27 @@
 import os
 from dataclasses import dataclass
-from dotenv import load_dotenv
+import yaml
+from pathlib import Path
 
-# Load environment variables
-load_dotenv()
-
+# Load configuration from YAML
 @dataclass
 class Config:
-    SUPABASE_URL: str = os.getenv('SUPABASE_URL', '')
-    SUPABASE_KEY: str = os.getenv('SUPABASE_KEY', '')
-    MAILJET_API_KEY: str = os.getenv('MAILJET_API_KEY', '')
-    MAILJET_API_SECRET: str = os.getenv('MAILJET_API_SECRET', '')
+    SUPABASE_URL: str
+    SUPABASE_KEY: str
+    MAILJET_API_KEY: str
+    MAILJET_API_SECRET: str
 
-config = Config()
+    @classmethod
+    def from_yaml(cls, yaml_path: str) -> 'Config':
+        with open(yaml_path, 'r') as f:
+            config_data = yaml.safe_load(f)
+            
+        return cls(
+            SUPABASE_URL=config_data['supabase']['url'],
+            SUPABASE_KEY=config_data['supabase']['key'],
+            MAILJET_API_KEY=config_data['mailjet']['api_key'],
+            MAILJET_API_SECRET=config_data['mailjet']['secret_key']
+        )
+
+config_path = Path(__file__).parent.parent / 'config' / 'config.yaml'
+config = Config.from_yaml(str(config_path))
