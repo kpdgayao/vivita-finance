@@ -1,6 +1,6 @@
 supabase:
-  url: https://xavxmkumcqmdgpivbfqd.supabase.co
-  key: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inhhdnhta3VtY3FtZGdwaXZiZnFkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzYzOTM4MjEsImV4cCI6MjA1MTk2OTgyMX0.HotR8t_tbMzp9-BU4pokJECyGRbPjzoKCR2fis0SBbY
+  url: your_supabase_url
+  key: your_supabase_key
 mailjet:
   api_key: your_mailjet_api_key
   secret_key: your_mailjet_secret_key
