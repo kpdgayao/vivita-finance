@@ -1,0 +1,6 @@
+supabase:
+  url: your_supabase_url
+  key: your_supabase_key
+mailjet:
+  api_key: your_mailjet_api_key
+  secret_key: your_mailjet_secret_key
