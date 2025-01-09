@@ -84,14 +84,18 @@ class PROFInterface:
             return False
     
     def render(self):
+        # Initialize session state
+        if 'show_prof_review' not in st.session_state:
+            st.session_state.show_prof_review = False
+        
         st.title("Purchase Request and Order Form (PROF)")
         
         # Basic Information
         col1, col2, col3 = st.columns(3)
         with col1:
-            requestor = st.text_input("Requestor", value=st.session_state.user['name'], disabled=True)
+            requestor = st.text_input("Requestor", value=st.session_state.user['profile'].get('full_name', ''), disabled=True)
         with col2:
-            department = st.text_input("Department", value=st.session_state.user['role'], disabled=True)
+            department = st.text_input("Department", value=st.session_state.user['profile'].get('department', ''), disabled=True)
         with col3:
             date = st.date_input("Date", datetime.now())
         
@@ -112,6 +116,7 @@ class PROFInterface:
         with st.form("prof_items_form"):
             st.subheader("Items")
             items = []
+            total_amount = Decimal('0')
             
             for i in range(self._get_item_count()):
                 st.markdown(f"##### Item {i + 1}")
@@ -127,12 +132,19 @@ class PROFInterface:
                     price = st.number_input(f"Unit Price", min_value=0.0, value=0.0, key=f"price_{i}")
                 
                 if all([description, quantity, unit, price]):
+                    item_total = Decimal(str(quantity * price))
+                    total_amount += item_total
                     items.append({
                         'description': description,
                         'quantity': quantity,
                         'unit': unit,
-                        'price': price
+                        'price': price,
+                        'total': item_total
                     })
+                    st.write(f"Item Total: ₱{item_total:,.2f}")
+            
+            # Display grand total
+            st.markdown(f"### Grand Total: ₱{total_amount:,.2f}")
             
             col1, col2, col3 = st.columns([1, 1, 2])
             with col1:
@@ -144,21 +156,73 @@ class PROFInterface:
                     self._decrease_items()
                     st.rerun()
             with col3:
-                submitted = st.form_submit_button("Submit PROF")
-                if submitted:
+                review_button = st.form_submit_button("Review PROF")
+                if review_button:
                     if not items:
                         st.error("Please add at least one item")
                         return
-                        
+                    
+                    # Store form data in session state for review
+                    st.session_state.prof_review = {
+                        'requestor': requestor,
+                        'department': department,
+                        'date': date,
+                        'urgency': urgency,
+                        'supplier': supplier,
+                        'items': items,
+                        'total_amount': total_amount
+                    }
+                    st.session_state.show_prof_review = True
+                    st.rerun()
+        
+        # Review Section
+        if st.session_state.get('show_prof_review'):
+            st.markdown("---")
+            st.subheader("Review Purchase Request")
+            review_data = st.session_state.prof_review
+            
+            col1, col2 = st.columns(2)
+            with col1:
+                st.write("### Basic Information")
+                st.write(f"Requestor: {review_data['requestor']}")
+                st.write(f"Department: {review_data['department']}")
+                st.write(f"Date: {review_data['date']}")
+                st.write(f"Urgency: {review_data['urgency']}")
+                st.write(f"Supplier: {review_data['supplier']['name']}")
+            
+            with col2:
+                st.write("### Summary")
+                st.write(f"Total Items: {len(review_data['items'])}")
+                st.write(f"Total Amount: ₱{review_data['total_amount']:,.2f}")
+            
+            st.write("### Items")
+            for idx, item in enumerate(review_data['items'], 1):
+                st.markdown(f"""
+                **Item {idx}**: {item['description']}
+                - Quantity: {item['quantity']} {item['unit']}
+                - Unit Price: ₱{item['price']:,.2f}
+                - Total: ₱{item['total']:,.2f}
+                """)
+            
+            col1, col2 = st.columns(2)
+            with col1:
+                if st.button("Edit"):
+                    st.session_state.show_prof_review = False
+                    st.rerun()
+            with col2:
+                if st.button("Confirm and Submit"):
                     success = self._handle_prof_submission(
-                        requestor=requestor,
-                        department=department,
-                        date=date,
-                        urgency=urgency,
-                        supplier=supplier,
-                        items=items
+                        requestor=review_data['requestor'],
+                        department=review_data['department'],
+                        date=review_data['date'],
+                        urgency=review_data['urgency'],
+                        supplier=review_data['supplier'],
+                        items=review_data['items']
                     )
                     
                     if success:
-                        st.session_state.item_count = 1  # Reset form
+                        # Reset form
+                        st.session_state.item_count = 1
+                        st.session_state.show_prof_review = False
+                        st.session_state.pop('prof_review', None)
                         st.rerun()

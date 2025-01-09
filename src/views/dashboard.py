@@ -1,5 +1,6 @@
 import streamlit as st
 from src.crud import PurchaseRequestManager
+from src.models.purchase_request import PurchaseRequestStatus
 
 def render():
     st.title("Dashboard")
@@ -10,27 +11,27 @@ def render():
     col1, col2, col3 = st.columns(3)
     
     with col1:
-        pending_prs = pr_manager.get_purchase_requests(status='pending')
+        pending_prs = pr_manager.get_purchase_requests(PurchaseRequestStatus.PENDING)
         st.metric("Pending PRFs", len(pending_prs))
         
     with col2:
-        approved_prs = pr_manager.get_purchase_requests(status='approved')
+        approved_prs = pr_manager.get_purchase_requests(PurchaseRequestStatus.APPROVED)
         st.metric("Approved PRFs", len(approved_prs))
         
     with col3:
-        rejected_prs = pr_manager.get_purchase_requests(status='rejected')
+        rejected_prs = pr_manager.get_purchase_requests(PurchaseRequestStatus.REJECTED)
         st.metric("Rejected PRFs", len(rejected_prs))
     
     # Display recent PRFs
     st.subheader("Recent Purchase Requests")
-    all_prs = pr_manager.get_purchase_requests()
     
-    if all_prs:
-        for pr in all_prs:
-            with st.expander(f"PROF #{pr.form_number} - {pr.status.title()}"):
-                st.write(f"Total Amount: ₱{pr.total_amount:,.2f}")
-                st.write(f"Status: {pr.status.title()}")
-                st.write(f"Remarks: {pr.remarks}")
+    recent_prs = pr_manager.get_purchase_requests()[:5]  # Get last 5 PRFs
+    
+    if recent_prs:
+        for pr in recent_prs:
+            with st.expander(f"PRF #{pr.form_number} - {pr.status.value.title()}"):
+                st.write(f"Date: {pr.created_at.strftime('%Y-%m-%d')}")
+                st.write(f"Total Amount: ₱{pr.total_amount:,.2f}" if pr.total_amount else "Total Amount: ₱0.00")
                 
                 if pr.items:
                     st.write("Items:")

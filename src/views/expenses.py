@@ -4,8 +4,18 @@ from decimal import Decimal
 from typing import List, Optional
 from uuid import UUID
 
-from src.managers.expense_manager import ExpenseManager
-from src.models.expense import ExpenseItem, ExpenseReimbursementForm, Voucher, VoucherEntry
+from src.crud import ExpenseManager
+from src.models.expense import (
+    ExpenseReimbursementForm,
+    ExpenseItem,
+    ExpenseFormStatus,
+    Voucher,
+    VoucherEntry
+)
+
+def calculate_item_total(amount: Decimal) -> Decimal:
+    """Calculate total for an item"""
+    return Decimal(str(amount)).quantize(Decimal('0.01'))
 
 def render_erf_form():
     st.title("Expense Reimbursement Form")
@@ -29,6 +39,7 @@ def render_erf_form():
         st.subheader("Expense Details")
         
         # Display existing items
+        grand_total = Decimal('0')
         for i, item in enumerate(st.session_state.expense_items):
             col1, col2, col3, col4, col5, col6 = st.columns([2, 3, 3, 2, 2, 1])
             with col1:
@@ -40,53 +51,62 @@ def render_erf_form():
             with col4:
                 item.reference_number = st.text_input(f"Reference # {i}", item.reference_number or '')
             with col5:
-                item.amount = Decimal(st.number_input(f"Amount {i}", value=float(item.amount), step=0.01))
+                amount = st.number_input(f"Amount {i}", value=float(item.amount), step=0.01, format="%.2f")
+                item.amount = Decimal(str(amount))
+                # Calculate item total
+                item_total = calculate_item_total(item.amount)
+                grand_total += item_total
+                st.write(f"Total: ₱{item_total:,.2f}")
             with col6:
                 if st.button("Remove", key=f"remove_{i}"):
                     st.session_state.expense_items.pop(i)
                     st.rerun()
         
+        # Display grand total
+        st.markdown(f"### Grand Total: ₱{grand_total:,.2f}")
+        
         # Add new item button
         if st.button("Add Item"):
-            st.session_state.expense_items.append(
-                ExpenseItem(
-                    date=datetime.now(),
-                    description="",
-                    payee="",
-                    amount=Decimal('0'),
-                    account="",
-                    reference_number=""
-                )
+            new_item = ExpenseItem(
+                date=datetime.now(),
+                description="",
+                payee="",
+                amount=Decimal('0'),
+                account="OPEX",  # Default account
+                reference_number=None
             )
+            st.session_state.expense_items.append(new_item)
             st.rerun()
         
-        # Calculate total
-        total_amount = sum(item.amount for item in st.session_state.expense_items)
-        st.write(f"Total Amount: ₱{total_amount:,.2f}")
-        
-        submitted = st.form_submit_button("Submit")
-        if submitted:
-            if not st.session_state.expense_items:
-                st.error("Please add at least one expense item")
-                return
+        # Submit button
+        if st.form_submit_button("Submit"):
+            try:
+                if not st.session_state.expense_items:
+                    st.error("Please add at least one expense item")
+                    return
+                
+                # Create ERF
+                erf = ExpenseReimbursementForm(
+                    employee_id=st.session_state.user['id'],
+                    designation=designation,
+                    date=date,
+                    status=ExpenseFormStatus.PENDING,
+                    items=st.session_state.expense_items,
+                    total_amount=grand_total  # Set the calculated grand total
+                )
+                
+                # Save ERF
+                result = expense_manager.create_expense_form(erf)
+                
+                if result:
+                    st.success(f"ERF #{result.form_number} submitted successfully!")
+                    st.session_state.expense_items = []  # Clear items
+                    st.rerun()
+                else:
+                    st.error("Failed to submit ERF. Please try again.")
             
-            # Create ERF
-            erf = ExpenseReimbursementForm(
-                employee_id=UUID(st.session_state.user['id']),
-                designation=designation,
-                date=datetime.combine(date, datetime.min.time()),
-                total_amount=total_amount,
-                items=st.session_state.expense_items
-            )
-            
-            result = expense_manager.create_erf(erf)
-            if result:
-                st.success(f"ERF {result.form_number} created successfully!")
-                # Clear form
-                st.session_state.expense_items = []
-                st.rerun()
-            else:
-                st.error("Failed to create ERF. Please try again.")
+            except Exception as e:
+                st.error(f"Error submitting ERF: {str(e)}")
 
 def render_voucher_form():
     st.title("Voucher")
@@ -192,10 +212,65 @@ def render():
     st.sidebar.title("Expenses")
     page = st.sidebar.radio(
         "Select Form",
-        ["Expense Reimbursement Form", "Voucher"]
+        ["Expense Reimbursement Form", "Voucher", "View ERFs"]
     )
     
     if page == "Expense Reimbursement Form":
         render_erf_form()
-    else:
+    elif page == "Voucher":
         render_voucher_form()
+    else:
+        st.subheader("Expense Reimbursement Forms")
+        
+        # Filter by status
+        status_filter = st.selectbox(
+            "Filter by Status",
+            [None] + [status.value for status in ExpenseFormStatus],
+            format_func=lambda x: "All" if x is None else x.title()
+        )
+        
+        # Get ERFs
+        status = ExpenseFormStatus(status_filter) if status_filter else None
+        erfs = expense_manager.get_expense_forms(status=status)
+        
+        if erfs:
+            for erf in erfs:
+                with st.expander(f"ERF #{erf.form_number} - {erf.status.value.title()}"):
+                    st.write(f"Date: {erf.date.strftime('%Y-%m-%d')}")
+                    st.write(f"Designation: {erf.designation}")
+                    st.write(f"Total Amount: ₱{erf.total_amount:,.2f}")
+                    st.write(f"Status: {erf.status.value.title()}")
+                    
+                    if erf.items:
+                        st.write("Items:")
+                        for item in erf.items:
+                            st.write(f"- {item.description}: {item.payee} - ₱{item.amount:,.2f}")
+                    
+                    # Show approval buttons for pending ERFs if user has permission
+                    if (erf.status == ExpenseFormStatus.PENDING and 
+                        st.session_state.user['permissions'].get('can_approve', False)):
+                        col1, col2 = st.columns(2)
+                        with col1:
+                            if st.button("Approve", key=f"approve_{erf.id}"):
+                                if expense_manager.update_expense_form_status(
+                                    erf.id,
+                                    ExpenseFormStatus.APPROVED,
+                                    st.session_state.user['id']
+                                ):
+                                    st.success("ERF approved successfully!")
+                                    st.rerun()
+                                else:
+                                    st.error("Failed to approve ERF")
+                        with col2:
+                            if st.button("Reject", key=f"reject_{erf.id}"):
+                                if expense_manager.update_expense_form_status(
+                                    erf.id,
+                                    ExpenseFormStatus.REJECTED,
+                                    st.session_state.user['id']
+                                ):
+                                    st.success("ERF rejected successfully!")
+                                    st.rerun()
+                                else:
+                                    st.error("Failed to reject ERF")
+        else:
+            st.info("No expense forms found.")

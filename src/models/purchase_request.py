@@ -1,11 +1,9 @@
-from dataclasses import dataclass
-from typing import List, Optional, Dict
-from decimal import Decimal
+from dataclasses import dataclass, field
+from typing import List, Optional
+from decimal import Decimal, ROUND_HALF_UP
 from datetime import datetime
 from uuid import UUID
 from enum import Enum
-from dataclasses import field
-from decimal import ROUND_HALF_UP
 
 class PurchaseRequestStatus(Enum):
     DRAFT = 'draft'
@@ -20,15 +18,6 @@ def validate_decimal(value: Decimal) -> Decimal:
     if not isinstance(value, Decimal):
         value = Decimal(str(value))
     return value.quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
-
-@dataclass
-class User:
-    email: str
-    full_name: str
-    role: str
-    id: Optional[UUID] = None
-    created_at: Optional[datetime] = None
-    updated_at: Optional[datetime] = None
 
 @dataclass
 class PurchaseRequestItem:
@@ -81,17 +70,3 @@ class PurchaseRequest:
         if self.items:
             calculated_total = sum(item.total_price for item in self.items)
             self.total_amount = validate_decimal(calculated_total)
-
-@dataclass
-class Supplier:
-    name: str
-    contact_person: Optional[str] = None
-    phone: Optional[str] = None
-    email: Optional[str] = None
-    address: Optional[str] = None
-    tax_id: Optional[str] = None
-    preferred_payment_method: Optional[str] = None
-    bank_details: Optional[Dict] = None
-    id: Optional[UUID] = None
-    created_at: Optional[datetime] = None
-    updated_at: Optional[datetime] = None

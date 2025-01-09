@@ -1,18 +1,20 @@
 from dataclasses import dataclass
 from datetime import datetime
 from decimal import Decimal
-from typing import List, Optional
+from typing import List, Optional, Dict
 from uuid import UUID
 
 @dataclass
 class Supplier:
     id: Optional[UUID] = None
     name: str = ""
-    address: str = ""
     contact_person: str = ""
-    contact_number: str = ""
+    phone: str = ""
     email: str = ""
+    address: str = ""
     tax_id: str = ""
+    preferred_payment_method: str = ""
+    bank_details: Optional[Dict] = None
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
 
