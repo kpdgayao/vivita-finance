@@ -84,6 +84,9 @@ class PROFInterface:
             return False
     
     def render(self):
+        st.warning("This interface has been deprecated. Please use the new Purchase Request Form under the Forms section.")
+        st.stop()
+        
         # Initialize session state
         if 'show_prof_review' not in st.session_state:
             st.session_state.show_prof_review = False

@@ -25,7 +25,9 @@ def validate_decimal(value: Decimal) -> Decimal:
 class User:
     email: str
     full_name: str
-    role: str
+    role: str  # One of: 'Finance', 'Admin', 'User'
+    first_name: str
+    last_name: str
     id: Optional[UUID] = None
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None

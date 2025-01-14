@@ -46,9 +46,9 @@ class PurchaseRequestItem:
 
 @dataclass
 class PurchaseRequest:
-    form_number: str
     requestor_id: UUID
     supplier_id: UUID
+    form_number: Optional[str] = None
     status: PurchaseRequestStatus = PurchaseRequestStatus.DRAFT
     total_amount: Optional[Decimal] = None
     remarks: Optional[str] = None

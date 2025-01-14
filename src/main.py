@@ -15,7 +15,7 @@ from src.views.dashboard import render as dashboard_render
 from src.views.settings import render as settings_render
 from src.views.suppliers import render as suppliers_render
 from src.views.expenses import render as expenses_render
-from src.interfaces.prof import PROFInterface
+from src.views.purchase_requests import render as purchase_requests_render
 from src.config import config
 
 # Initialize session state once
@@ -447,8 +447,7 @@ def main():
             if page == "Dashboard":
                 dashboard_render()
             elif page == "Purchase Requests" and st.session_state.user['permissions']['can_approve']:
-                prof = PROFInterface()
-                prof.render()
+                purchase_requests_render()
             elif page == "Expenses" and st.session_state.user['permissions']['can_approve']:
                 expenses_render()
             elif page == "Petty Cash Fund" and st.session_state.user['permissions'].get('can_manage_pcf', False):

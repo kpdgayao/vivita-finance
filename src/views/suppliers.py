@@ -1,6 +1,6 @@
 import streamlit as st
-from src.crud import SupplierManager
-from src.models import Supplier
+from ..crud import SupplierManager
+from ..models import Supplier
 from uuid import UUID
 
 def render():

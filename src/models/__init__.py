@@ -16,6 +16,7 @@ from .purchase_request import (
 )
 
 from .supplier import Supplier
+from .audit import AuditEntry
 
 __all__ = [
     'ExpenseReimbursementForm',
@@ -27,5 +28,6 @@ __all__ = [
     'PurchaseRequestItem',
     'PurchaseRequestStatus',
     'validate_decimal',
-    'Supplier'
+    'Supplier',
+    'AuditEntry'
 ]
